@@ -1,6 +1,6 @@
 Name:           maven-eclipse-plugin
 Version:        2.8
-Release:        4
+Release:        6
 Summary:        Maven Eclipse Plugin
 
 Group:          Development/Java
