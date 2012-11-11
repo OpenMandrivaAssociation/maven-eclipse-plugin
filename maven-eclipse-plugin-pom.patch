@@ -1,0 +1,73 @@
+--- pom.xml.orig	2010-06-10 23:55:01.000000000 +0800
++++ pom.xml	2010-06-11 13:42:46.000000000 +0800
+@@ -120,7 +120,7 @@
+     <dependency>
+       <groupId>org.eclipse.core</groupId>
+       <artifactId>resources</artifactId>
+-      <version>3.3.0-v20070604</version>
++      <version>3.5.2-v201004121342</version>
+       <exclusions>
+         <exclusion>
+           <groupId>org.eclipse.ant</groupId>
+@@ -220,61 +220,6 @@
+         <version>2.4.3</version>
+       </plugin>
+       <plugin>
+-        <groupId>org.apache.maven.plugins</groupId>
+-        <artifactId>maven-antrun-plugin</artifactId>
+-        <executions>
+-          <execution>
+-            <id>verify-integration-tests-checks</id>
+-            <phase>post-integration-test</phase>
+-            <configuration>
+-              <tasks>
+-                <property name="script" location="verify-integration-tests-checks.bsh" />
+-                <script language="beanshell" src="${script}" />
+-              </tasks>
+-            </configuration>
+-            <goals>
+-              <goal>run</goal>
+-            </goals>
+-          </execution>
+-        </executions>
+-        <dependencies>
+-          <dependency>
+-            <groupId>org.apache.ant</groupId>
+-            <artifactId>ant-nodeps</artifactId>
+-            <version>1.7.1</version>
+-          </dependency>
+-          <dependency>
+-            <groupId>org.apache.ant</groupId>
+-            <artifactId>ant-apache-bsf</artifactId>
+-            <version>1.7.1</version>
+-          </dependency>
+-          <dependency>
+-            <groupId>org.beanshell</groupId>
+-            <artifactId>bsh</artifactId>
+-            <version>2.0b4</version>
+-          </dependency>
+-        </dependencies>
+-      </plugin>
+-      <plugin>
+-        <artifactId>maven-enforcer-plugin</artifactId>
+-        <executions>
+-          <execution>
+-            <id>require-maven-2.0.9</id>
+-            <goals>
+-              <goal>enforce</goal>
+-            </goals>
+-            <configuration>
+-              <rules>
+-                <requireMavenVersion>
+-                  <!-- The tests check file encoding and class path ordering which depends on fixes in latest Maven -->
+-                  <version>[2.0.9,)</version>
+-                </requireMavenVersion>
+-              </rules>
+-            </configuration>
+-          </execution>
+-        </executions>
+-      </plugin>
+-      <plugin>
+         <artifactId>maven-surefire-plugin</artifactId>
+         <configuration>
+           <includes>

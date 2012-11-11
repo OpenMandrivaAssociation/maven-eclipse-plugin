@@ -1,0 +1,13 @@
+--- src/main/java/org/apache/maven/plugin/eclipse/InstallPluginsMojo.java.orig	2010-06-11 11:21:24.000000000 +0800
++++ src/main/java/org/apache/maven/plugin/eclipse/InstallPluginsMojo.java	2010-06-11 11:21:43.000000000 +0800
+@@ -407,10 +407,6 @@
+             {
+                 throw new MojoExecutionException( "Could not extract: " + artifactFile, e );
+             }
+-            catch ( IOException e )
+-            {
+-                throw new MojoExecutionException( "Could not extract: " + artifactFile, e );
+-            }
+         }
+     }
+ 
