@@ -1,62 +1,36 @@
+%{?_javapackages_macros:%_javapackages_macros}
+# Eclipse does not yet export virtual maven provides, so filter out the requires
+%global __requires_exclude mvn\\(org\\.eclipse\\.core:resources\\)
+
 Name:           maven-eclipse-plugin
-Version:        2.8
-Release:        6
+Version:        2.9
+Release:        9.0%{?dist}
 Summary:        Maven Eclipse Plugin
 
-Group:          Development/Java
+
 License:        ASL 2.0
 URL:            http://maven.apache.org/plugins/maven-eclipse-plugin/
-# svn export http://svn.apache.org/repos/asf/maven/plugins/tags/maven-eclipse-plugin-2.8 maven-eclipse-plugin
-# tar czf maven-eclipse-plugin-2.8.tgz maven-eclipse-plugin
-Source0:        maven-eclipse-plugin-2.8.tgz
-Source1:        %{name}-depmap.xml
+Source0:        http://repo1.maven.org/maven2/org/apache/maven/plugins/%{name}/%{version}/%{name}-%{version}-source-release.zip
+Patch0:         %{name}-compat.patch
+Patch1:         %{name}-exception.patch
+Patch2:         %{name}-ioexception.patch
 
-# NOTE: Patch0 is used for three purposes: 
-# 1. Bypass maven version check
-# 2. Bypass the post-integration-test goal
-# 3. Use the newer eclipse resources version that we have in rawhide.
-# 1 and 2 should be fixed in the future  
-# FIXME: It needs maven > 2.0.9 for unit testing, because we don't have it yet, 
-# so we should patch the pom to bypass enforcer firstly. The should be removed
-# when the maven 2.2 bootstrap is done in rawhide
-Patch0:        %{name}-pom.patch
-# FIXME: The highest version of plexus-resources is a4, but we need a7.
-# In a7, the same API throw an extra IOException, the patch is tested to be 
-# safe. But it should be removed when a7 is ready. 
-Patch1:        %{name}-install-plugin-mojo.patch
-
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-
+%if 0%{?rhel} >= 6
+ExclusiveArch: %{ix86} x86_64
+%else
 BuildArch: noarch
+%endif
 
 # Basic stuff
 BuildRequires: jpackage-utils
-BuildRequires: java-devel >= 0:1.6.0
+BuildRequires: java-devel >= 1:1.6.0
 
 # Maven and its dependencies
-BuildRequires: maven2
-BuildRequires: maven-plugin-plugin
-BuildRequires: maven-resources-plugin
-BuildRequires: maven-compiler-plugin
-BuildRequires: maven-install-plugin
-BuildRequires: maven-javadoc-plugin
-BuildRequires: maven-jar-plugin
-BuildRequires: maven-doxia
-BuildRequires: maven-doxia-tools
-BuildRequires: maven-doxia-sitetools
-BuildRequires: maven-surefire-provider-junit
-BuildRequires: maven-surefire-maven-plugin
-BuildRequires: maven-plugin-cobertura
-BuildRequires: maven-archiver
-BuildRequires: maven-shared-osgi
-BuildRequires: maven-antrun-plugin
-BuildRequires: maven-idea-plugin
-BuildRequires: maven-invoker-plugin
-BuildRequires: maven-enforcer-plugin
-BuildRequires: maven-shared-invoker
+BuildRequires: maven-local
+BuildRequires: maven-test-tools
+BuildRequires: maven-plugin-testing-tools
 # Others
 BuildRequires: apache-commons-io
-BuildRequires: easymock
 BuildRequires: xmlunit
 BuildRequires: eclipse-platform
 BuildRequires: plexus-resources
@@ -66,17 +40,6 @@ BuildRequires: dom4j
 BuildRequires: xom
 BuildRequires: saxpath
 
-
-Requires: java
-Requires: maven2
-Requires: apache-commons-io
-Requires: plexus-resources
-Requires: jpackage-utils
-Requires: jsch
-Requires: jtidy
-Requires(post): jpackage-utils
-Requires(postun): jpackage-utils
-
 Provides:       maven2-plugin-eclipse = 0:%{version}-%{release}
 Obsoletes:      maven2-plugin-eclipse <= 0:2.0.8
 
@@ -85,84 +48,99 @@ The Eclipse Plugin is used to generate Eclipse IDE files (.project, .classpath
 and the .settings folder) from a POM.
 
 %package javadoc
-Group:          Development/Java
+
 Summary:        Javadoc for %{name}
-Requires:       jpackage-utils
 
 %description javadoc
 API documentation for %{name}.
 
 
 %prep
-%setup -q -n %{name}
+%setup -q 
+%patch0 -p1
+%patch1 -p1
+%patch2 -p1
 
-%patch0
-%patch1
+sed -i -e "s|3.3.0-v20070604|3.7.100.v20110510-0712|g" pom.xml
+
+# Remove easymock dependency (tests are skipped)
+%pom_remove_dep easymock:
 
 %build
+# Create a local repo for the eclipse dependency because eclipse
+# does not yet export virtual mvn provides or ship pom files
 export MAVEN_REPO_LOCAL=$(pwd)/.m2/repository
-
-# The depmap is used by the mvn-jpp command to convert dependencies
-# to the locations and versions that are available (if needed)
-cp %{SOURCE1} %{name}-depmap.xml
-export MAVEN_DEPMAP=$(pwd)/%{name}-depmap.xml
-
-CORE_FAKE_VERSION="3.5.2-v201004121342"
+CORE_FAKE_VERSION="3.7.100.v20110510-0712"
 CORE_PLUGIN_DIR=$MAVEN_REPO_LOCAL/org/eclipse/core/resources/$CORE_FAKE_VERSION
 
 mkdir -p $CORE_PLUGIN_DIR
-plugin_file=`ls %{_libdir}/eclipse/plugins/org.eclipse.core.resources_*jar`
+plugin_file=`ls /usr/lib{,64}/eclipse/plugins/org.eclipse.core.resources_*jar || :`
 
 ln -s "$plugin_file" $CORE_PLUGIN_DIR/resources-$CORE_FAKE_VERSION.jar
 
-mvn-jpp \
-        -e \
-        -Dmaven.test.skip=true \
-        -Dmaven2.jpp.mode=true \
-        -Dmaven2.jpp.depmap.file=${MAVEN_DEPMAP} \
-        -Dmaven.repo.local=$MAVEN_REPO_LOCAL \
-        install javadoc:javadoc
+# Skip tests because they do not compile
+%mvn_build -- -Dmaven.test.skip=true -Dmaven.repo.local=$MAVEN_REPO_LOCAL
 
 %install
-rm -rf %{buildroot}
+%mvn_install
 
-# jars
-install -d -m 0755 %{buildroot}%{_javadir}
-install -m 644 target/%{name}-%{version}.jar   %{buildroot}%{_javadir}/%{name}-%{version}.jar
+%files -f .mfiles
+%doc LICENSE NOTICE DEPENDENCIES README-testing.txt
 
-(cd %{buildroot}%{_javadir} && for jar in *-%{version}*; \
-    do ln -sf ${jar} `echo $jar| sed "s|-%{version}||g"`; done)
+%files javadoc -f .mfiles-javadoc
+%doc LICENSE NOTICE
 
-%add_to_maven_depmap org.apache.maven.plugins maven-eclipse-plugin %{version} JPP maven-eclipse-plugin
+%changelog
+* Thu Aug 29 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.9-9
+- Don't use %%_libdir in noarch package
 
-# poms
-install -d -m 755 %{buildroot}%{_mavenpomdir}
-install -pm 644 pom.xml \
-    %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
+* Thu Aug 29 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.9-8
+- Remove dependency on easymock
+- Resolves: rhbz#1002477
 
-# javadoc
-install -d -m 0755 %{buildroot}%{_javadocdir}/%{name}-%{version}
-cp -pr target/site/api*/* %{buildroot}%{_javadocdir}/%{name}-%{version}/
-ln -s %{name}-%{version} %{buildroot}%{_javadocdir}/%{name}
-rm -rf target/site/api*
+* Sun Aug 18 2013 Mat Booth <fedora@matbooth.co.uk> - 2.9-7
+- Update for newer guidelines rhbz #992186
+- Install license files
 
-%post
-%update_maven_depmap
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.9-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
-%postun
-%update_maven_depmap
+* Thu Feb 28 2013 Weinan Li <weli@redhat.com> - 2.9-5
+- Remove unneeded dependencies on maven-doxia
 
-%clean
-rm -rf %{buildroot}
+* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.9-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
-%files
-%defattr(-,root,root,-)
-%{_javadir}/*
-%{_mavenpomdir}/*
-%{_mavendepmapfragdir}/*
+* Wed Feb 06 2013 Java SIG <java-devel@lists.fedoraproject.org> - 2.9-3
+- Update for https://fedoraproject.org/wiki/Fedora_19_Maven_Rebuild
+- Replace maven BuildRequires with maven-local
 
-%files javadoc
-%defattr(-,root,root,-)
-%{_javadocdir}/%{name}-%{version}
-%{_javadocdir}/%{name}
+* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.9-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
 
+* Tue Mar 06 2012 Tomas Radej <tradej@redhat.com> - 2.9-1
+- Updated to the upstream version
+
+* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.8-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
+* Fri Dec 9 2011 Alexander Kurtakov <akurtako@redhat.com> 2.8-7
+- Add exclusive arch for rhel.
+
+* Mon Dec 5 2011 Alexander Kurtakov <akurtako@redhat.com> 2.8-6
+- Fix build in pure maven 3 environment.
+
+* Fri Jun 17 2011 Alexander Kurtakov <akurtako@redhat.com> 2.8-5
+- Build with maven 3.x.
+
+* Tue Feb 08 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.8-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
+
+* Thu Sep 09 2010 Weinan Li <weli@redhat.com> - 2.8-3
+- Remove version from BR eclipse-platform
+
+* Fri Jun 25 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 2.8-2
+- Update R/BRs, make eclipse.core.resources path dynamic
+
+* Fri Jun 11 2010 Weinan Li <weli@redhat.com> - 2.8-1
+- Initial Package
