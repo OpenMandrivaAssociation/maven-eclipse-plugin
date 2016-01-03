@@ -4,7 +4,7 @@
 
 Name:           maven-eclipse-plugin
 Version:        2.9
-Release:        9.1%{?dist}
+Release:        12.1
 Summary:        Maven Eclipse Plugin
 
 
@@ -29,16 +29,17 @@ BuildRequires: java-devel >= 1:1.6.0
 BuildRequires: maven-local
 BuildRequires: maven-test-tools
 BuildRequires: maven-plugin-testing-tools
+BuildRequires: maven-osgi
 # Others
 BuildRequires: apache-commons-io
 BuildRequires: xmlunit
 BuildRequires: eclipse-platform
 BuildRequires: plexus-resources
+BuildRequires: plexus-interactivity-jline
 BuildRequires: bsf
 BuildRequires: jaxen
 BuildRequires: dom4j
 BuildRequires: xom
-BuildRequires: saxpath
 
 Provides:       maven2-plugin-eclipse = 0:%{version}-%{release}
 Obsoletes:      maven2-plugin-eclipse <= 0:2.0.8
@@ -63,8 +64,9 @@ API documentation for %{name}.
 
 sed -i -e "s|3.3.0-v20070604|3.7.100.v20110510-0712|g" pom.xml
 
-# Remove easymock dependency (tests are skipped)
+# Remove easymock/saxpath dependency (tests are skipped)
 %pom_remove_dep easymock:
+%pom_remove_dep saxpath:
 
 %build
 # Create a local repo for the eclipse dependency because eclipse
@@ -77,6 +79,8 @@ mkdir -p $CORE_PLUGIN_DIR
 plugin_file=`ls /usr/lib{,64}/eclipse/plugins/org.eclipse.core.resources_*jar || :`
 
 ln -s "$plugin_file" $CORE_PLUGIN_DIR/resources-$CORE_FAKE_VERSION.jar
+
+%pom_xpath_inject "pom:dependencies/pom:dependency[pom:groupId[text()='org.eclipse.core']]" "<scope>provided</scope>"
 
 # Skip tests because they do not compile
 %mvn_build -- -Dmaven.test.skip=true -Dmaven.repo.local=$MAVEN_REPO_LOCAL
