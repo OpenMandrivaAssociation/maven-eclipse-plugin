@@ -4,7 +4,7 @@
 
 Name:           maven-eclipse-plugin
 Version:        2.9
-Release:        12.1
+Release:        12.2
 Summary:        Maven Eclipse Plugin
 
 
