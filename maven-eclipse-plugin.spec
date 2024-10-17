@@ -9,7 +9,7 @@ Summary:        Maven Eclipse Plugin
 
 
 License:        ASL 2.0
-URL:            http://maven.apache.org/plugins/maven-eclipse-plugin/
+URL:            https://maven.apache.org/plugins/maven-eclipse-plugin/
 Source0:        http://repo1.maven.org/maven2/org/apache/maven/plugins/%{name}/%{version}/%{name}-%{version}-source-release.zip
 Patch0:         %{name}-compat.patch
 Patch1:         %{name}-exception.patch
